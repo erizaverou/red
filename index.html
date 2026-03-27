@@ -1,1 +1,296 @@
-松川10位
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ティッシュ帝国</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+      background: linear-gradient(180deg, #eaf6ff 0%, #fff7fb 100%);
+      color: #243447;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .wrap {
+      width: 100%;
+      max-width: 960px;
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 18px;
+    }
+    .panel {
+      background: rgba(255,255,255,0.92);
+      border-radius: 24px;
+      box-shadow: 0 12px 30px rgba(40, 60, 90, 0.12);
+      padding: 22px;
+      border: 1px solid rgba(255,255,255,0.7);
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    .hero {
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .counter {
+      font-size: clamp(28px, 4vw, 46px);
+      font-weight: 800;
+      margin: 8px 0 4px;
+    }
+    .sub {
+      color: #6b7a8d;
+      font-size: 14px;
+      margin-bottom: 18px;
+    }
+    .tissue-btn {
+      width: min(280px, 80%);
+      aspect-ratio: 1 / 1;
+      border: none;
+      border-radius: 28px;
+      background: linear-gradient(145deg, #ffffff, #dbeeff);
+      box-shadow: 0 14px 30px rgba(0,0,0,0.12), inset 0 2px 0 rgba(255,255,255,0.9);
+      cursor: pointer;
+      font-size: 80px;
+      transition: transform 0.08s ease, box-shadow 0.12s ease;
+      user-select: none;
+      position: relative;
+    }
+    .tissue-btn:active { transform: scale(0.96); }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .stat {
+      background: #f4f9ff;
+      border-radius: 18px;
+      padding: 14px;
+      text-align: center;
+    }
+    .stat .value { font-size: 22px; font-weight: 700; }
+    .shop-item, .upgrade-item {
+      background: #f9fcff;
+      border: 1px solid #e5eef8;
+      border-radius: 18px;
+      padding: 14px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+    .shop-item button, .upgrade-item button, .save-row button {
+      border: none;
+      border-radius: 14px;
+      background: #4da3ff;
+      color: white;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .shop-item button:disabled, .upgrade-item button:disabled {
+      background: #b7c6d8;
+      cursor: not-allowed;
+    }
+    .floating {
+      position: absolute;
+      font-weight: 800;
+      color: #2b7de9;
+      pointer-events: none;
+      animation: floatUp 0.9s ease forwards;
+    }
+    @keyframes floatUp {
+      0% { opacity: 0; transform: translateY(10px) scale(0.9); }
+      20% { opacity: 1; }
+      100% { opacity: 0; transform: translateY(-45px) scale(1.15); }
+    }
+    .log {
+      background: #f6fbff;
+      border-radius: 16px;
+      padding: 12px;
+      min-height: 90px;
+      max-height: 180px;
+      overflow: auto;
+      font-size: 14px;
+      color: #506174;
+    }
+    .save-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    @media (max-width: 800px) {
+      .wrap { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="panel hero">
+      <h1>🧻 ティッシュ帝国</h1>
+      <p class="sub">クリックしてティッシュを量産し、工場を建てて放置で増やそう。</p>
+      <div class="counter" id="tissueCount">0 枚</div>
+      <div class="sub" id="offlineInfo">今日もティッシュ日和。</div>
+      <button class="tissue-btn" id="clickBtn" aria-label="ティッシュを集める">📦</button>
+
+      <div class="stats">
+        <div class="stat"><div>1クリック</div><div class="value" id="perClick">1</div></div>
+        <div class="stat"><div>毎秒</div><div class="value" id="perSecond">0</div></div>
+        <div class="stat"><div>総生産</div><div class="value" id="totalMade">0</div></div>
+      </div>
+
+      <div style="margin-top:18px; text-align:left;">
+        <h3>実績</h3>
+        <div class="log" id="log"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>🏭 ショップ</h2>
+      <div id="shop"></div>
+
+      <h2 style="margin-top:24px;">⚙️ 強化</h2>
+      <div id="upgrades"></div>
+
+      <h2 style="margin-top:24px;">💾 セーブ</h2>
+      <div class="save-row">
+        <button onclick="saveGame()">セーブ</button>
+        <button onclick="resetGame()">リセット</button>
+      </div>
+      <p class="sub" style="margin-top:10px;">自動保存あり。閉じても続きから遊べる。</p>
+    </section>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'tissue_idle_game_v1';
+
+    const buildingDefs = [
+      { id:'worker', name:'ポケット配り係', baseCost:15, tps:0.2, owned:0, emoji:'🙋' },
+      { id:'box', name:'ティッシュ箱詰め機', baseCost:80, tps:1, owned:0, emoji:'📦' },
+      { id:'truck', name:'街頭配布トラック', baseCost:400, tps:5, owned:0, emoji:'🚚' },
+      { id:'factory', name:'高性能ティッシュ工場', baseCost:1800, tps:22, owned:0, emoji:'🏭' },
+      { id:'lab', name:'超吸水研究所', baseCost:9000, tps:120, owned:0, emoji:'🧪' }
+    ];
+
+    const upgradeDefs = [
+      { id:'softness', name:'やわらか加工', desc:'クリック量 +1', cost:50, bought:false, effect: s => s.perClick += 1 },
+      { id:'doubleTap', name:'二枚取り技術', desc:'クリック量 x2', cost:250, bought:false, effect: s => s.perClick *= 2 },
+      { id:'ad', name:'駅前キャンペーン', desc:'毎秒 +5', cost:600, bought:false, effect: s => s.flatBonus += 5 },
+      { id:'premium', name:'高級保湿モデル', desc:'全自動生産 x1.5', cost:2500, bought:false, effect: s => s.prodMultiplier *= 1.5 },
+    ];
+
+    let state = {
+      tissues: 0,
+      totalMade: 0,
+      perClick: 1,
+      flatBonus: 0,
+      prodMultiplier: 1,
+      buildings: structuredClone(buildingDefs),
+      upgrades: structuredClone(upgradeDefs),
+      lastUpdate: Date.now(),
+      log: ['ゲーム開始！ ティッシュ帝国を築こう。']
+    };
+
+    const tissueCount = document.getElementById('tissueCount');
+    const perClickEl = document.getElementById('perClick');
+    const perSecondEl = document.getElementById('perSecond');
+    const totalMadeEl = document.getElementById('totalMade');
+    const shopEl = document.getElementById('shop');
+    const upgradesEl = document.getElementById('upgrades');
+    const logEl = document.getElementById('log');
+    const clickBtn = document.getElementById('clickBtn');
+    const offlineInfo = document.getElementById('offlineInfo');
+
+    function format(n) {
+      if (n < 1000) return Math.floor(n).toLocaleString('ja-JP');
+      if (n < 1_000_000) return (n/1000).toFixed(1) + 'K';
+      if (n < 1_000_000_000) return (n/1_000_000).toFixed(1) + 'M';
+      return (n/1_000_000_000).toFixed(1) + 'B';
+    }
+
+    function buildingCost(b) {
+      return Math.floor(b.baseCost * Math.pow(1.18, b.owned));
+    }
+
+    function calcPerSecond() {
+      const buildingProd = state.buildings.reduce((sum, b) => sum + b.owned * b.tps, 0);
+      return (buildingProd * state.prodMultiplier) + state.flatBonus;
+    }
+
+    function addLog(text) {
+      state.log.unshift(text);
+      state.log = state.log.slice(0, 12);
+      renderLog();
+    }
+
+    function renderLog() {
+      logEl.innerHTML = state.log.map(line => `<div>・${line}</div>`).join('');
+    }
+
+    function render() {
+      tissueCount.textContent = `${format(state.tissues)} 枚`;
+      perClickEl.textContent = format(state.perClick);
+      perSecondEl.textContent = format(calcPerSecond());
+      totalMadeEl.textContent = format(state.totalMade);
+
+      shopEl.innerHTML = '';
+      state.buildings.forEach((b, index) => {
+        const cost = buildingCost(b);
+        const row = document.createElement('div');
+        row.className = 'shop-item';
+        row.innerHTML = `
+          <div>
+            <strong>${b.emoji} ${b.name}</strong><br>
+            <small>所持: ${b.owned} / 毎秒 +${b.tps}</small><br>
+            <small>価格: ${format(cost)} 枚</small>
+          </div>
+          <button ${state.tissues < cost ? 'disabled' : ''} onclick="buyBuilding(${index})">購入</button>
+        `;
+        shopEl.appendChild(row);
+      });
+
+      upgradesEl.innerHTML = '';
+      state.upgrades.forEach((u, index) => {
+        const row = document.createElement('div');
+        row.className = 'upgrade-item';
+        row.innerHTML = `
+          <div>
+            <strong>${u.name}</strong><br>
+            <small>${u.desc}</small><br>
+            <small>価格: ${format(u.cost)} 枚</small>
+          </div>
+          <button ${state.tissues < u.cost || u.bought ? 'disabled' : ''} onclick="buyUpgrade(${index})">${u.bought ? '購入済み' : '購入'}</button>
+        `;
+        upgradesEl.appendChild(row);
+      });
+
+      unlockAchievements();
+    }
+
+    function clickTissue(e) {
+      state.tissues += state.perClick;
+      state.totalMade += state.perClick;
+      render();
+      spawnFloat(`+${format(state.perClick)}`, e);
+    }
+
+    function spawnFloat(text, e) {
+      const rect = clickBtn.getBoundingClientRect();
+      const float = document.createElement('div');
+      float.className = 'floating';
+      float.textContent = text;
+      float.style.left = ((e?.clientX || rect.left + rect.width/2) - rect.left) + 'px';
+      float.style.top = ((e?.clientY || rect.top + rect.height/2) - rect.top) + 'px';
+      clickBtn.appendChild(float);
+      setTimeout(() => float.remove(), 900);
+    }
+
+    function buyBuilding(index) {
+      const b =
