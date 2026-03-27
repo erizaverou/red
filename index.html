@@ -138,7 +138,7 @@
       <p class="sub">クリックしてティッシュを量産し、工場を建てて放置で増やそう。</p>
       <div class="counter" id="tissueCount">0 枚</div>
       <div class="sub" id="offlineInfo">今日もティッシュ日和。</div>
-      <button class="tissue-btn" id="clickBtn" aria-label="ティッシュを集める">📦</button>
+      <button type="button" class="tissue-btn" id="clickBtn" aria-label="ティッシュを集める">📦</button>
 
       <div class="stats">
         <div class="stat"><div>1クリック</div><div class="value" id="perClick">1</div></div>
@@ -277,8 +277,12 @@
     function clickTissue(e) {
       state.tissues += state.perClick;
       state.totalMade += state.perClick;
-      render();
+      tissueCount.textContent = `${format(state.tissues)} 枚`;
+      totalMadeEl.textContent = format(state.totalMade);
+      perClickEl.textContent = format(state.perClick);
+      perSecondEl.textContent = format(calcPerSecond());
       spawnFloat(`+${format(state.perClick)}`, e);
+      render();
     }
 
     function spawnFloat(text, e) {
@@ -293,4 +297,93 @@
     }
 
     function buyBuilding(index) {
-      const b =
+      const b = state.buildings[index];
+      const cost = buildingCost(b);
+      if (state.tissues < cost) return;
+      state.tissues -= cost;
+      b.owned += 1;
+      addLog(`${b.name} を1つ建てた！`);
+      render();
+    }
+
+    function buyUpgrade(index) {
+      const u = state.upgrades[index];
+      if (u.bought || state.tissues < u.cost) return;
+      state.tissues -= u.cost;
+      u.bought = true;
+      u.effect(state);
+      addLog(`${u.name} を解放！`);
+      render();
+    }
+
+    function gameTick() {
+      const now = Date.now();
+      const delta = (now - state.lastUpdate) / 1000;
+      state.lastUpdate = now;
+      const gained = calcPerSecond() * delta;
+      state.tissues += gained;
+      state.totalMade += gained;
+      render();
+    }
+
+    function unlockAchievements() {
+      if (state.totalMade >= 100 && !state.log.includes('実績: はじめての100枚！')) {
+        addLog('実績: はじめての100枚！');
+      }
+      if (state.buildings.find(b => b.id === 'factory')?.owned >= 1 && !state.log.includes('実績: 工場長デビュー！')) {
+        addLog('実績: 工場長デビュー！');
+      }
+      if (calcPerSecond() >= 100 && !state.log.includes('実績: 秒間100枚突破！')) {
+        addLog('実績: 秒間100枚突破！');
+      }
+    }
+
+    function saveGame() {
+      state.lastUpdate = Date.now();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      addLog('セーブ完了！');
+    }
+
+    function loadGame() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      try {
+        const loaded = JSON.parse(raw);
+        state = { ...state, ...loaded };
+        const secondsAway = Math.floor((Date.now() - (loaded.lastUpdate || Date.now())) / 1000);
+        const offlineGain = calcPerSecond() * Math.max(0, Math.min(secondsAway, 60 * 60 * 8));
+        if (offlineGain > 0) {
+          state.tissues += offlineGain;
+          state.totalMade += offlineGain;
+          offlineInfo.textContent = `放置報酬: ${format(offlineGain)} 枚ゲット！`;
+          addLog(`放置中に ${format(offlineGain)} 枚たまった！`);
+        }
+      } catch {
+        console.log('セーブ読み込み失敗');
+      }
+    }
+
+    function resetGame() {
+      if (!confirm('本当に最初からやり直す？')) return;
+      localStorage.removeItem(STORAGE_KEY);
+      location.reload();
+    }
+
+    clickBtn.addEventListener('click', (e) => {
+      clickTissue(e);
+    });
+    clickBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      clickTissue({ clientX: touch.clientX, clientY: touch.clientY });
+    }, { passive: false });
+
+    loadGame();
+    renderLog();
+    render();
+    setInterval(gameTick, 100);
+    setInterval(saveGame, 10000);
+  </script>
+</body>
+</html>
+
